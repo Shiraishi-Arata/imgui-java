@@ -39,6 +39,7 @@ class GenerateLibs extends DefaultTask {
 
     private final boolean isLocal = System.properties.containsKey('local')
     private final boolean withFreeType = Boolean.valueOf(System.properties.getProperty('freetype', 'false'))
+    private final boolean enableFreeType = withFreeType
 
     private final String sourceDir = project.file('src/generated/java')
     private final String classpath = project.file('build/classes/java/main')
@@ -89,7 +90,7 @@ class GenerateLibs extends DefaultTask {
             spec.into(jniDir)
         }
 
-        if (withFreeType) {
+        if (enableFreeType) {
             project.copy { CopySpec spec ->
                 spec.from(project.rootProject.file('include/imgui/misc/freetype')) { CopySpec it -> it.include('*.h', '*.cpp') }
                 spec.into("$jniDir/misc/freetype")
@@ -232,7 +233,7 @@ class GenerateLibs extends DefaultTask {
     }
 
     void addFreeTypeIfEnabled(BuildTarget target) {
-        if (!withFreeType) {
+        if (!enableFreeType) {
             return
         }
 
@@ -269,7 +270,8 @@ class GenerateLibs extends DefaultTask {
     String detectVendorTarget() {
         if (forWindows) return 'windows'
         if (forMac || forMacArm64) return 'macos'
-        if (forLinux || forAndroidArm64) return 'linux'
+        if (forLinux) return 'linux'
+        if (forAndroidArm64) return 'androidarm64'
         throw new IllegalStateException("Unable to determine FreeType vendor target for envs=$buildEnvs")
     }
 
