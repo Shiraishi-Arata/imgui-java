@@ -34,6 +34,7 @@ class GenerateLibs extends DefaultTask {
     private final boolean forLinux = buildEnvs?.contains('linux')
     private final boolean forMac = buildEnvs?.contains('macos')
     private final boolean forMacArm64 = buildEnvs?.contains('macosarm64')
+    private final boolean forAndroidArm64 = buildEnvs?.contains('androidarm64')
 
     private final boolean isLocal = System.properties.containsKey('local')
     private final boolean withFreeType = Boolean.valueOf(System.properties.getProperty('freetype', 'false'))
@@ -134,6 +135,13 @@ class GenerateLibs extends DefaultTask {
             buildTargets += createMacTarget(Architecture.ARM)
         }
 
+        if (forAndroidArm64) {
+            def androidArm64 = BuildTarget.newDefaultTarget(Os.Android, Architecture.Bitness._64, Architecture.ARM)
+            requireCpp17(androidArm64)
+            addFreeTypeIfEnabled(androidArm64)
+            buildTargets += androidArm64
+        }
+
         new AntScriptGenerator().generate(buildConfig, buildTargets)
 
         // Generate native libraries
@@ -149,6 +157,16 @@ class GenerateLibs extends DefaultTask {
             BuildExecutor.executeAnt(jniDir + '/build-macosx64.xml', commonParams)
         if (forMacArm64)
             BuildExecutor.executeAnt(jniDir + '/build-macosxarm64.xml', commonParams)
+        if (forAndroidArm64) {
+            def androidBuildScripts = project.fileTree(jniDir).matching { include('build-android*.xml') }.files.sort()
+            if (androidBuildScripts.isEmpty()) {
+                throw new IllegalStateException("Unable to find generated Android build script in $jniDir")
+            }
+
+            androidBuildScripts.each { File androidBuildScript ->
+                BuildExecutor.executeAnt(androidBuildScript.absolutePath, commonParams)
+            }
+        }
 
         BuildExecutor.executeAnt(jniDir + '/build.xml', '-v', 'pack-natives')
 
@@ -160,6 +178,12 @@ class GenerateLibs extends DefaultTask {
             checkLibExist("macosx64/libimgui-moulberry92-java64.dylib")
         if (forMacArm64)
             checkLibExist("macosxarm64/libimgui-moulberry92-java64.dylib")
+        if (forAndroidArm64) {
+            if (!isAndroidLibPresent()) {
+                logger.error('Failed to build Android shared library!')
+                throw new IllegalStateException("$rootDir/$libsDirName does not contain Android .so output")
+            }
+        }
     }
 
     void checkLibExist(String libName) {
@@ -168,6 +192,13 @@ class GenerateLibs extends DefaultTask {
             logger.error("Failed to build $libName!")
             throw new IllegalStateException("$path does not exist")
         }
+    }
+
+
+    boolean isAndroidLibPresent() {
+        return project.fileTree("$rootDir/$libsDirName").matching {
+            include('android*/libimgui-moulberry92-java64.so')
+        }.files.any()
     }
 
     BuildTarget createMacTarget(Architecture arch) {
