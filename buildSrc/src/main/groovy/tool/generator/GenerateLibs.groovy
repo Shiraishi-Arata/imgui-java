@@ -9,6 +9,7 @@ import org.gradle.api.file.CopySpec
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecSpec
 
 @CompileStatic
 class GenerateLibs extends DefaultTask {
@@ -45,6 +46,7 @@ class GenerateLibs extends DefaultTask {
     private final String jniDir = "$rootDir/jni"
     private final String tmpDir = "$rootDir/tmp"
     private final String libsDirName = 'libsNative'
+    private boolean freeTypeVendorEnsured = false
 
     @TaskAction
     void generate() {
@@ -224,14 +226,40 @@ class GenerateLibs extends DefaultTask {
         }
 
         def freetypeVendorDir = project.rootProject.file('build/vendor/freetype')
+        ensureFreeTypeVendor(freetypeVendorDir)
+
+        target.cppFlags += " -I$freetypeVendorDir/include"
+        target.linkerFlags += " -L${project.rootProject.file("$freetypeVendorDir/lib")}" 
+        target.libraries += ' -lfreetype'
+    }
+
+    void ensureFreeTypeVendor(File freetypeVendorDir) {
+        if (freeTypeVendorEnsured || freetypeVendorDir.exists()) {
+            freeTypeVendorEnsured = true
+            return
+        }
+
+        def vendorTarget = detectVendorTarget()
+        logger.lifecycle("$freetypeVendorDir doesn't exist. Running buildSrc/scripts/vendor_freetype.sh $vendorTarget")
+
+        project.providers.exec { ExecSpec execSpec ->
+            execSpec.workingDir = project.rootProject.projectDir
+            execSpec.commandLine('bash', 'buildSrc/scripts/vendor_freetype.sh', vendorTarget)
+        }.result.get()
+
         if (!freetypeVendorDir.exists()) {
-            logger.error("$freetypeVendorDir doesn't exist! Run 'buildSrc/scripts/vendor_freetype.sh' for your platform beforehand!")
+            logger.error("$freetypeVendorDir doesn't exist after auto-vendoring. Run 'buildSrc/scripts/vendor_freetype.sh $vendorTarget' manually and check the build logs above.")
             throw new IllegalStateException("Unable to build library for FreeType")
         }
 
-        target.cppFlags += " -I$freetypeVendorDir/include"
-        target.linkerFlags += " -L${project.rootProject.file("$freetypeVendorDir/lib")}"
-        target.libraries += ' -lfreetype'
+        freeTypeVendorEnsured = true
+    }
+
+    String detectVendorTarget() {
+        if (forWindows) return 'windows'
+        if (forMac || forMacArm64) return 'macos'
+        if (forLinux || forAndroidArm64) return 'linux'
+        throw new IllegalStateException("Unable to determine FreeType vendor target for envs=$buildEnvs")
     }
 
     void replaceSourceFileContent(String fileName, String replaceWhat, String replaceWith) {
