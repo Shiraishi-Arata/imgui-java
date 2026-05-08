@@ -193,6 +193,7 @@ class GenerateLibs extends DefaultTask {
         if (forMacArm64)
             checkLibExist("macosxarm64/libimgui-moulberry92-java64.dylib")
         if (forAndroidArm64) {
+            normalizeAndroidLibOutput()
             if (!hasAndroidLibOutput()) {
                 logger.error('Failed to build Android shared library!')
                 throw new IllegalStateException("$rootDir/$libsDirName does not contain Android .so output")
@@ -210,8 +211,39 @@ class GenerateLibs extends DefaultTask {
 
     boolean hasAndroidLibOutput() {
         return project.fileTree("$rootDir/$libsDirName").matching {
+            include('android*/libimgui-moulberry92-java.so')
             include('android*/libimgui-moulberry92-java64.so')
         }.files.any()
+    }
+
+    void normalizeAndroidLibOutput() {
+        def libsNativeDir = new File("$rootDir/$libsDirName")
+        def androidLibs = project.fileTree(libsNativeDir).matching {
+            include('android*/libimgui-moulberry92-java.so')
+            include('android*/libimgui-moulberry92-java64.so')
+        }.files
+
+        if (!androidLibs.isEmpty()) {
+            return
+        }
+
+        def legacyAndroidLibs = project.fileTree("$rootDir/libs").matching {
+            include('**/libimgui-moulberry92-java.so')
+            include('**/libimgui-moulberry92-java64.so')
+        }.files
+
+        legacyAndroidLibs.each { File legacyLib ->
+            def abiDirName = legacyLib.parentFile?.name ?: 'aarch64'
+            def targetDir = new File(libsNativeDir, "android-$abiDirName")
+            if (!targetDir.exists() && !targetDir.mkdirs()) {
+                throw new IllegalStateException("Unable to create directory $targetDir")
+            }
+
+            project.copy { CopySpec spec ->
+                spec.from(legacyLib)
+                spec.into(targetDir)
+            }
+        }
     }
 
     BuildTarget createMacTarget(Architecture arch) {

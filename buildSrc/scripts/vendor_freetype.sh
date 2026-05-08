@@ -113,8 +113,8 @@ case "$VTYPE" in
 
         export AR="$TOOLCHAIN/bin/llvm-ar"
         export RANLIB="$TOOLCHAIN/bin/llvm-ranlib"
-        export CC="$TOOLCHAIN/bin/aarch64-linux-android21-clang"
-        export CXX="$TOOLCHAIN/bin/aarch64-linux-android21-clang++"
+        export CC="$TOOLCHAIN/bin/aarch64-linux-android24-clang"
+        export CXX="$TOOLCHAIN/bin/aarch64-linux-android24-clang++"
         export CFLAGS="-fPIC"
         export LDFLAGS=""
 
