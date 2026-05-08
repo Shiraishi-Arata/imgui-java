@@ -140,7 +140,14 @@ class GenerateLibs extends DefaultTask {
         if (forAndroidArm64) {
             def androidArm64 = BuildTarget.newDefaultTarget(Os.Android, Architecture.Bitness._64, Architecture.ARM)
             requireCpp17(androidArm64)
-            // Force linking libc++ for Android NDK builds (imgui-node-editor/crude_json use std::string/iostream symbols).
+            // Force libc++ usage/linking for Android NDK builds (imgui-node-editor/crude_json use std::string/iostream symbols).
+            // Some NDK/Ant combinations ignore BuildTarget.libraries for STL selection, so set both stdlib flags and explicit lib.
+            if (!androidArm64.cppFlags.contains('-stdlib=libc++')) {
+                androidArm64.cppFlags += ' -stdlib=libc++'
+            }
+            if (!androidArm64.linkerFlags.contains('-stdlib=libc++')) {
+                androidArm64.linkerFlags += ' -stdlib=libc++'
+            }
             if (!androidArm64.libraries.contains('-lc++_shared')) {
                 androidArm64.libraries += ' -lc++_shared'
             }
