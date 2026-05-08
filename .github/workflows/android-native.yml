@@ -1,0 +1,48 @@
+name: Android Native Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-android-native:
+    name: Build Android Native (arm64-v8a)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository and Submodules
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: liberica
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Setup Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27d
+
+      - name: Build Android Native
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: ./gradlew imgui-binding:generateLibs -Denvs=androidarm64 -Dfreetype=false
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-library-android-arm64
+          path: /tmp/imgui/libsNative/android64/libimgui-moulberry92-java64.so
+
