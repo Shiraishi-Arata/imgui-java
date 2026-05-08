@@ -179,7 +179,7 @@ class GenerateLibs extends DefaultTask {
         if (forMacArm64)
             checkLibExist("macosxarm64/libimgui-moulberry92-java64.dylib")
         if (forAndroidArm64) {
-            if (!isAndroidLibPresent()) {
+            if (!hasAndroidLibOutput()) {
                 logger.error('Failed to build Android shared library!')
                 throw new IllegalStateException("$rootDir/$libsDirName does not contain Android .so output")
             }
@@ -195,7 +195,7 @@ class GenerateLibs extends DefaultTask {
     }
 
 
-    boolean isAndroidLibPresent() {
+    boolean hasAndroidLibOutput() {
         return project.fileTree("$rootDir/$libsDirName").matching {
             include('android*/libimgui-moulberry92-java64.so')
         }.files.any()
