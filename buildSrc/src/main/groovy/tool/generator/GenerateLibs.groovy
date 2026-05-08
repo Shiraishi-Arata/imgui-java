@@ -140,6 +140,10 @@ class GenerateLibs extends DefaultTask {
         if (forAndroidArm64) {
             def androidArm64 = BuildTarget.newDefaultTarget(Os.Android, Architecture.Bitness._64, Architecture.ARM)
             requireCpp17(androidArm64)
+            // Force linking libc++ for Android NDK builds (imgui-node-editor/crude_json use std::string/iostream symbols).
+            if (!androidArm64.libraries.contains('-lc++_shared')) {
+                androidArm64.libraries += ' -lc++_shared'
+            }
             addFreeTypeIfEnabled(androidArm64)
             buildTargets += androidArm64
         }
