@@ -38,7 +38,7 @@ jobs:
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        run: ./gradlew imgui-binding:generateLibs -Denvs=androidarm64 -Dfreetype=false
+        run: ./gradlew imgui-binding:generateLibs -Denvs=androidarm64 -Dfreetype=true
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
